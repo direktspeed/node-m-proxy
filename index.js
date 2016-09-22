@@ -157,14 +157,15 @@ module.exports.create = function (opts) {
 
 module.exports.pack = function (address, data) {
   var version = 1;
-  var header = /*servername + ',' +*/address.family + ',' + address.address + ',' + address.port + ',' + data.byteLength;
-  var meta = [ 255 - version, header.length ];
-  var buf = Buffer.alloc(meta.length + header.length + data.byteLength);
+  var header = Buffer.from(
+    /*servername + ',' +*/address.family + ',' + address.address + ',' + address.port + ',' + data.byteLength
+  );
+  var meta = Buffer.from([ 255 - version, header.length ]);
+  var buf = Buffer.alloc(meta.byteLength + header.byteLength + data.byteLength);
 
-  buf.write(meta[0], 0);
-  buf.write(meta[1], 1);
-  buf.write(header, 2);
-  buf.write(data, 2 + header.length);
+  meta.copy(buf, 0, 0, meta.byteLength);
+  header.copy(buf, 2, 0, header.byteLength);
+  data.copy(buf, 2 + header.byteLength, 0, data.byteLength);
 
   return buf;
 };

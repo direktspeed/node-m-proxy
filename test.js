@@ -3,7 +3,12 @@
 var sni = require('sni');
 var hello = require('fs').readFileSync('./sni.hello.bin');
 var version = 1;
-var header = 'IPv4,127.0.1.1,443,' + hello.byteLength;
+var address = {
+  family: 'IPv4'
+, address: '127.0.1.1'
+, port: 443
+};
+var header = address.family + ',' + address.address + ',' + address.port + ',' + hello.byteLength;
 var buf = Buffer.concat([
   Buffer.from([ 255 - version, header.length ])
 , Buffer.from(header)
@@ -12,7 +17,8 @@ var buf = Buffer.concat([
 var services = { 'ssh': 22, 'http': 4080, 'https': 8443 };
 var clients = {};
 var count = 0;
-var machine = require('./').create({
+var packer = require('./');
+var machine = packer.create({
   onMessage: function (opts) {
     var id = opts.family + ',' + opts.address + ',' + opts.port;
     var service = 'https';
@@ -39,7 +45,14 @@ var machine = require('./').create({
     count += 1;
   }
 });
+var packed = packer.pack(address, hello);
 
+if (!packed.equals(buf)) {
+  console.error(buf.toString('hex') === packed.toString('hex'));
+  console.error(packed.toString('hex'), packed.byteLength);
+  console.error(buf.toString('hex'), buf.byteLength);
+  throw new Error("packer did not pack as expected");
+}
 
 
 console.log('');

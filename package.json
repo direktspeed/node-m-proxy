@@ -1,0 +1,34 @@
+{
+  "name": "tunnel-packer",
+  "version": "1.0.0",
+  "description": "A strategy for packing and unpacking tunneled network messages (or any stream)",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Daplie/tunnel-packer.git"
+  },
+  "keywords": [
+    "tunnel",
+    "tcp",
+    "sni",
+    "https",
+    "ssl",
+    "http",
+    "proxy",
+    "pack",
+    "unpack",
+    "message",
+    "msg",
+    "packer",
+    "unpacker"
+  ],
+  "author": "AJ ONeal <coolaj86@gmail.com> (https://coolaj86.com/)",
+  "license": "(MIT OR Apache-2.0)",
+  "bugs": {
+    "url": "https://github.com/Daplie/tunnel-packer/issues"
+  },
+  "homepage": "https://github.com/Daplie/tunnel-packer#readme"
+}
