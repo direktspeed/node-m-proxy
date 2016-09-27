@@ -82,6 +82,7 @@ module.exports.create = function (opts) {
       machine.address = machine._headers[1];
       machine.port = machine._headers[2];
       machine.bodyLen = parseInt(machine._headers[3], 10) || -1;
+      machine.service = machine._headers[4];
 
       return true;
     }
@@ -129,6 +130,7 @@ module.exports.create = function (opts) {
     , address: machine.address
     , port: machine.port
     , data: machine.buf.slice(0, machine.bufIndex)
+    , service: machine.service
     });
 
     machine.chunkIndex += partLen;  // === chunk.length
@@ -157,9 +159,10 @@ module.exports.create = function (opts) {
 
 module.exports.pack = function (address, data) {
   var version = 1;
-  var header = Buffer.from(
-    /*servername + ',' +*/address.family + ',' + address.address + ',' + address.port + ',' + data.byteLength
-  );
+  var header = Buffer.from([
+    /*servername,*/ address.family, address.address, address.port, data.byteLength
+  , (data.service || 'https')
+  ].join(','));
   var meta = Buffer.from([ 255 - version, header.length ]);
   var buf = Buffer.alloc(meta.byteLength + header.byteLength + data.byteLength);
 
