@@ -109,6 +109,7 @@ module.exports.create = function (opts) {
     //console.log('bodyLen:', machine.bodyLen, typeof machine.bodyLen);
     var partLen = 0;
     var msg;
+    var data;
 
     partLen = Math.min(machine.bodyLen - machine.bufIndex, chunk.length - machine.chunkIndex);
 
@@ -141,6 +142,7 @@ module.exports.create = function (opts) {
 
     machine.service = machine.service || machine.type;
     machine.type = machine.type || machine.service;
+    data = (machine.buf||Buffer.alloc(0)).slice(0, machine.bufIndex);
 
 
     //
@@ -154,6 +156,7 @@ module.exports.create = function (opts) {
       msg.port = machine.port;
       msg.service = 'end';
       msg.type = msg.type || 'end';
+      msg.data = data;
 
       if (machine.emit) {
         machine.emit('tunnelEnd', msg);
@@ -174,6 +177,7 @@ module.exports.create = function (opts) {
       msg.port = machine.port;
       msg.service = 'error';
       msg.type = msg.type || 'error';
+      msg.data = data;
 
       if (machine.emit) {
         machine.emit('tunnelError', msg);
@@ -183,17 +187,14 @@ module.exports.create = function (opts) {
       }
     }
     else {
-      msg = {
-        data: machine.buf.slice(0, machine.bufIndex)
-      , service: machine.service
-      , type: machine.type
-      };
+      msg = {};
 
       msg.family = machine.family;
       msg.address = machine.address;
       msg.port = machine.port;
       msg.service = machine.service;
       msg.type = machine.type || 'data';
+      msg.data = data;
 
       if (machine.emit) {
         machine.emit('tunnelData', msg);
