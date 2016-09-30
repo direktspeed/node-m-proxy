@@ -179,7 +179,7 @@ module.exports.create = function (opts) {
         machine.emit('tunnelError', msg);
       }
       else {
-        (machine.onerror||machine.onError)(msg);
+        (machine.onerror||machine.onmessage)(msg);
       }
     }
     else {
