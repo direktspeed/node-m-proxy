@@ -96,6 +96,7 @@ module.exports.create = function (opts) {
       machine.port = machine._headers[2];
       machine.bodyLen = parseInt(machine._headers[3], 10) || -1;
       machine.service = machine._headers[4];
+      //console.log('machine.service', machine.service);
 
       return true;
     }
@@ -140,22 +141,21 @@ module.exports.create = function (opts) {
     }
     machine.bufIndex += partLen;
 
-    machine.service = machine.service || machine.type;
-    machine.type = machine.type || machine.service;
+    machine.service = machine.service;
     data = machine.buf.slice(0, machine.bufIndex);
+    //console.log('machine.service', machine.service);
 
 
     //
     // data, end, error
     //
-    if ('end' === machine.type) {
+    if ('end' === machine.service) {
       msg = {};
 
       msg.family = machine.family;
       msg.address = machine.address;
       msg.port = machine.port;
       msg.service = 'end';
-      msg.type = msg.type || 'end';
       msg.data = data;
 
       if (machine.emit) {
@@ -165,7 +165,7 @@ module.exports.create = function (opts) {
         (machine.onend||machine.onmessage)(msg);
       }
     }
-    else if ('error' === machine.type) {
+    else if ('error' === machine.service) {
       try {
         msg = JSON.parse(machine.data.toString());
       } catch(e) {
@@ -176,7 +176,6 @@ module.exports.create = function (opts) {
       msg.address = machine.address;
       msg.port = machine.port;
       msg.service = 'error';
-      msg.type = msg.type || 'error';
       msg.data = data;
 
       if (machine.emit) {
@@ -193,7 +192,6 @@ module.exports.create = function (opts) {
       msg.address = machine.address;
       msg.port = machine.port;
       msg.service = machine.service;
-      msg.type = machine.type || 'data';
       msg.data = data;
 
       if (machine.emit) {
@@ -228,26 +226,23 @@ module.exports.create = function (opts) {
 
 };
 
-module.exports.pack = function (address, data, type) {
+module.exports.pack = function (address, data, service) {
   data = data || Buffer.alloc(1);
   if (!data.byteLength) {
     data = Buffer.alloc(1);
   }
-  if (type || (data.byteLength <= '|__ERROR__|'.length)) {
-    if ('error' === type || '|__ERROR__|' === data.toString()) {
-      address.type = 'error';
-      address.service = 'error';
-    }
-    else if ('end' === type || '|__END__|' === data.toString()) {
-      address.type = 'end';
-      address.service = 'end';
-    }
+
+  if ('error' === service) {
+    address.service = 'error';
+  }
+  else if ('end' === service) {
+    address.service = 'end';
   }
 
   var version = 1;
   var header = Buffer.from([
     /*servername,*/ address.family, address.address, address.port, data.byteLength
-  , (address.type || address.service || '')
+  , (address.service || '')
   ].join(','));
   var meta = Buffer.from([ 255 - version, header.length ]);
   var buf = Buffer.alloc(meta.byteLength + header.byteLength + data.byteLength);
