@@ -7,8 +7,11 @@ var address = {
   family: 'IPv4'
 , address: '127.0.1.1'
 , port: 443
+, service: 'foo'
 };
-var header = address.family + ',' + address.address + ',' + address.port + ',' + hello.byteLength;
+var header = address.family + ',' + address.address + ',' + address.port + ',' + hello.byteLength
+  + ',' + (address.service || '')
+  ;
 var buf = Buffer.concat([
   Buffer.from([ 255 - version, header.length ])
 , Buffer.from(header)
@@ -19,7 +22,7 @@ var clients = {};
 var count = 0;
 var packer = require('./');
 var machine = packer.create({
-  onMessage: function (opts) {
+  onmessage: function (opts) {
     var id = opts.family + ',' + opts.address + ',' + opts.port;
     var service = 'https';
     var port = services[service];
@@ -43,6 +46,12 @@ var machine = packer.create({
     }
 
     count += 1;
+  }
+, onerror: function () {
+    throw new Error("Did not expect onerror");
+  }
+, onend: function () {
+    throw new Error("Did not expect onend");
   }
 });
 var packed = packer.pack(address, hello);
