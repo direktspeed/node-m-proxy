@@ -157,11 +157,22 @@ module.exports.create = function (opts) {
 
 };
 
-module.exports.pack = function (address, data) {
+module.exports.pack = function (address, data, type) {
+  if (type || (data.byteLength <= '|__ERROR__|'.length)) {
+    if ('error' === type || '|__ERROR__|' === data.toString()) {
+      address.type = 'error';
+      address.service = 'error';
+    }
+    else if ('end' === type || '|__END__|' === data.toString()) {
+      address.type = 'end';
+      address.service = 'end';
+    }
+  }
+
   var version = 1;
   var header = Buffer.from([
     /*servername,*/ address.family, address.address, address.port, data.byteLength
-  , (address.service || '')
+  , (address.type || address.service || '')
   ].join(','));
   var meta = Buffer.from([ 255 - version, header.length ]);
   var buf = Buffer.alloc(meta.byteLength + header.byteLength + data.byteLength);
