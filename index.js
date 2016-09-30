@@ -229,6 +229,7 @@ module.exports.create = function (opts) {
 };
 
 module.exports.pack = function (address, data, type) {
+  data = data || Buffer.alloc(0);
   if (type || (data.byteLength <= '|__ERROR__|'.length)) {
     if ('error' === type || '|__ERROR__|' === data.toString()) {
       address.type = 'error';
