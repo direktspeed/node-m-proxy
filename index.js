@@ -142,7 +142,7 @@ module.exports.create = function (opts) {
 
     machine.service = machine.service || machine.type;
     machine.type = machine.type || machine.service;
-    data = (machine.buf||Buffer.alloc(0)).slice(0, machine.bufIndex);
+    data = machine.buf.slice(0, machine.bufIndex);
 
 
     //
@@ -229,7 +229,10 @@ module.exports.create = function (opts) {
 };
 
 module.exports.pack = function (address, data, type) {
-  data = data || Buffer.alloc(0);
+  data = data || Buffer.alloc(1);
+  if (!data.byteLength) {
+    data = Buffer.alloc(1);
+  }
   if (type || (data.byteLength <= '|__ERROR__|'.length)) {
     if ('error' === type || '|__ERROR__|' === data.toString()) {
       address.type = 'error';
