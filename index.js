@@ -161,7 +161,7 @@ module.exports.pack = function (address, data) {
   var version = 1;
   var header = Buffer.from([
     /*servername,*/ address.family, address.address, address.port, data.byteLength
-  , (data.service || 'https')
+  , (address.service || '')
   ].join(','));
   var meta = Buffer.from([ 255 - version, header.length ]);
   var buf = Buffer.alloc(meta.byteLength + header.byteLength + data.byteLength);
