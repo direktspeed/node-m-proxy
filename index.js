@@ -5,6 +5,8 @@ module.exports.create = function (opts) {
 
   if (!opts.onMessage && !opts.onmessage) {
     machine = new (require('events').EventEmitter)();
+  } else {
+    machine = {};
   }
 
   machine.onMessage = opts.onmessage || opts.onMessage;
