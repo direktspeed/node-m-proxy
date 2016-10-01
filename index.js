@@ -1,6 +1,8 @@
 'use strict';
 
-module.exports.create = function (opts) {
+var Packer = module.exports;
+
+Packer.create = function (opts) {
   var machine;
 
   if (!opts.onMessage && !opts.onmessage) {
@@ -226,7 +228,7 @@ module.exports.create = function (opts) {
 
 };
 
-module.exports.pack = function (address, data, service) {
+Packer.pack = function (address, data, service) {
   data = data || Buffer.alloc(1);
   if (!data.byteLength) {
     data = Buffer.alloc(1);
@@ -252,4 +254,119 @@ module.exports.pack = function (address, data, service) {
   data.copy(buf, 2 + header.byteLength, 0, data.byteLength);
 
   return buf;
+};
+
+Packer.socketToAddr = function (socket) {
+  // TODO BUG XXX
+  // https://github.com/nodejs/node/issues/8854
+  // tlsSocket.remoteAddress = remoteAddress; // causes core dump
+  // console.log(tlsSocket.remoteAddress);
+
+  return {
+    family:
+       socket.remoteFamily
+    || socket._remoteFamily
+    || socket._handle._parentWrap.remoteFamily
+    || socket._handle._parentWrap._handle.owner.stream.remoteFamily
+  , address:
+       socket.remoteAddress
+    || socket._remoteAddress
+    || socket._handle._parentWrap.remoteAddress
+    || socket._handle._parentWrap._handle.owner.stream.remoteAddress
+  , port:
+       socket.remotePort
+    || socket._remotePort
+    || socket._handle._parentWrap.remotePort
+    || socket._handle._parentWrap._handle.owner.stream.remotePort
+  };
+};
+
+Packer.addrToId = function (address) {
+  return address.family + ',' + address.address + ',' + address.port;
+};
+
+Packer.socketToId = function (socket) {
+  return Packer.addrToId(Packer.socketToAddr(socket));
+};
+
+
+/*
+ *
+ * Tunnel Packer
+ *
+ */
+
+var Transform = require('stream').Transform;
+var util = require('util');
+
+function MyTransform(options) {
+  if (!(this instanceof MyTransform)) {
+    return new MyTransform(options);
+  }
+  this.__my_addr = options.address;
+  this.__my_service = options.service;
+  Transform.call(this, options);
+}
+util.inherits(MyTransform, Transform);
+function transform(me, data, encoding, callback) {
+  var address = me.__my_addr;
+
+  address.service = address.service || me.__my_service;
+  me.push(Packer.pack(address, data));
+  callback();
+}
+MyTransform.prototype._transform = function (data, encoding, callback) {
+  return transform(this, data, encoding, callback);
+};
+
+Packer.Stream = {};
+var Dup = {
+  write: function (chunk, encoding, cb) {
+    //console.log('_write', chunk.byteLength);
+    this.__my_socket.write(chunk, encoding);
+    cb();
+  }
+, read: function (size) {
+    //console.log('_read');
+    var x = this.__my_socket.read(size);
+    if (x) {
+      console.log('_read', size);
+      this.push(x);
+    }
+  }
+};
+Packer.Stream.create = function (socket) {
+  // Workaround for
+  // https://github.com/nodejs/node/issues/8854
+
+  // https://www.google.com/#q=get+socket+address+from+file+descriptor
+  // TODO try creating a new net.Socket({ handle: socket._handle, fd: socket._handle.fd })
+  // from the old one and then adding back the data with
+  // sock.push(firstChunk)
+  var Duplex = require('stream').Duplex;
+  var myDuplex = new Duplex();
+
+  myDuplex.__my_socket = socket;
+  myDuplex._write = Dup.write;
+  myDuplex._read = Dup.read;
+  //console.log('plainSocket.*Address');
+  //console.log('remote:', socket.remoteAddress);
+  //console.log('local:', socket.localAddress);
+  //console.log('address():', socket.address());
+  myDuplex.remoteFamily = socket.remoteFamily;
+  myDuplex.remoteAddress = socket.remoteAddress;
+  myDuplex.remotePort = socket.remotePort;
+  myDuplex.localFamily = socket.localFamily;
+  myDuplex.localAddress = socket.localAddress;
+  myDuplex.localPort = socket.localPort;
+
+  return myDuplex;
+};
+
+Packer.Transform = {};
+Packer.Transform.create = function (opts) {
+  // Note: service refers to the port that the incoming request was from,
+  // if known (smtps, smtp, https, http, etc)
+  // { address: '127.0.0.1', service: 'https' }
+  return new MyTransform(opts);
 };
