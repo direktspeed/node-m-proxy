@@ -14,7 +14,7 @@ A strategy for packing and unpacking tunneled network messages (or any stream) i
 
 Examples
 
-```
+```js
 var Packer = require('tunnel-packer');
 
 Packer.create({
