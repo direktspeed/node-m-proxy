@@ -81,6 +81,7 @@ and `sni.tcp.bin` is any captured tcp packet, such as this one with a tls hello:
 
 `sni.tcp.bin`:
 ```
+        0  1  2  3  4  5  6  7  8  9  A  B  C  D  D  F
 0000000 16 03 01 00 c2 01 00 00 be 03 03 57 e3 76 50 66
 0000010 03 df 99 76 24 c8 31 e6 e8 08 34 6b b4 7b bb 2c
 0000020 f3 17 aa 5c ec 09 da da 83 5a b2 00 00 56 00 ff
@@ -102,6 +103,7 @@ You should see that the result is simply all of the original packet with a leadi
 Note that `16 03 01 00` starts at the 29th byte (at index 28 or 0x1C) instead of at index 0:
 
 ```
+        0  1  2  3  4  5  6  7  8  9  A  B  C  D  D  F
 0000000 fe 1a 49 50 76 34 2c 31 32 37 2e 30 2e 31 2e 31 <-- 0xfe = v1, 0x1a = 26 more bytes for header
 0000010 2c 34 34 33 2c 31 39 39 2c 66 6f 6f 16 03 01 00 <-- first 4 bytes of tcp packet
 0000020 c2 01 00 00 be 03 03 57 e3 76 50 66 03 df 99 76
