@@ -1,0 +1,9 @@
+{ "version": 1
+, "address": {
+    "family": "IPv4"
+  , "address": "127.0.1.1"
+  , "port": 443
+  , "service": "foo"
+  }
+, "filepath": "./sni.hello.bin"
+}
