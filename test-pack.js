@@ -13,19 +13,25 @@ if (!infile || !outfile) {
 }
 
 var json = JSON.parse(fs.readFileSync(infile, 'utf8'));
-var version = json.version;
-var address = json.address;
 var data = require('fs').readFileSync(json.filepath, null);
+var Packer = require('./index.js');
 
-var header = address.family + ',' + address.address + ',' + address.port + ',' + data.byteLength
-  + ',' + (address.service || '')
-  ;
-var buf = Buffer.concat([
-  Buffer.from([ 255 - version, header.length ])
-, Buffer.from(header)
-, data
-]);
+/*
+function pack() {
+  var version = json.version;
+  var address = json.address;
+  var header = address.family + ',' + address.address + ',' + address.port + ',' + data.byteLength
+    + ',' + (address.service || '')
+    ;
+  var buf = Buffer.concat([
+    Buffer.from([ 255 - version, header.length ])
+  , Buffer.from(header)
+  , data
+  ]);
+}
+*/
 
+var buf = Packer.pack(json.address, data);
 fs.writeFileSync(outfile, buf, null);
 console.log("wrote " + buf.byteLength + " bytes to '" + outfile + "' ('hexdump " + outfile + "' to inspect)");
 
