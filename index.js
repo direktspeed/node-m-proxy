@@ -226,24 +226,30 @@ Packer.pack = function (address, data, service) {
   return buf;
 };
 
+function extractSocketProp(socket, propName) {
+  // remoteAddress, remotePort... ugh... https://github.com/nodejs/node/issues/8854
+  var value = socket[propName] || socket['_' + propName];
+  try {
+    value = value || socket._handle._parent.owner.stream[propName];
+  } catch (e) {}
+
+  try {
+    value = value || socket._handle._parentWrap[propName];
+    value = value || socket._handle._parentWrap._handle.owner.stream[propName];
+  } catch (e) {}
+
+  return value || '';
+}
 Packer.socketToAddr = function (socket) {
   // TODO BUG XXX
   // https://github.com/nodejs/node/issues/8854
   // tlsSocket.remoteAddress = remoteAddress; // causes core dump
   // console.log(tlsSocket.remoteAddress);
 
-  function extractValue(name) {
-    return socket[name]
-      || socket['_'+name]
-      || socket._handle._parentWrap[name]
-      || socket._handle._parentWrap._handle.owner.stream[name]
-      ;
-  }
-
   return {
-    family:  extractValue('remoteFamily')
-  , address: extractValue('remoteAddress')
-  , port:    extractValue('remotePort')
+    family:  extractSocketProp(socket, 'remoteFamily')
+  , address: extractSocketProp(socket, 'remoteAddress')
+  , port:    extractSocketProp(socket, 'remotePort')
   };
 };
 
@@ -262,6 +268,53 @@ Packer.socketToId = function (socket) {
  *
  */
 
+  var addressNames = [
+    'remoteAddress'
+  , 'remotePort'
+  , 'remoteFamily'
+  , 'localAddress'
+  , 'localPort'
+  ];
+// Imporoved workaround for  https://github.com/nodejs/node/issues/8854
+// Unlike Duplex this should handle all of the events needed to make everything work.
+Packer.wrapSocket = function (socket) {
+  var myDuplex = new require('stream').Duplex();
+  addressNames.forEach(function (name) {
+    myDuplex[name] = extractSocketProp(socket, name);
+  });
+
+  // Handle everything needed for the write part of the Duplex. We need to overwrite the
+  // `end` function because there is no other way to know when the other side calls it.
+  myDuplex._write = socket.write.bind(socket);
+  myDuplex.end = socket.end.bind(socket);
+
+  // Handle everything needed for the read part of the Duplex. See the example under
+  // https://nodejs.org/api/stream.html#stream_readable_push_chunk_encoding.
+  myDuplex._read = function () {
+    socket.resume();
+  };
+  socket.on('data', function (chunk) {
+    if (!myDuplex.push(chunk)) {
+      socket.pause();
+    }
+  });
+  socket.on('end', function () {
+    myDuplex.push(null);
+  });
+
+  // Handle the the things not directly related to reading or writing
+  socket.on('error', function (err) {
+    console.error('[error] wrapped socket errored - ' + err.toString());
+    myDuplex.emit('error', err);
+  });
+  socket.on('close', function () {
+    myDuplex.emit('close');
+  });
+  myDuplex.destroy = socket.destroy.bind(socket);
+
+  return myDuplex;
+};
+
 var Transform = require('stream').Transform;
 var util = require('util');
 
@@ -274,23 +327,20 @@ function MyTransform(options) {
   Transform.call(this, options);
 }
 util.inherits(MyTransform, Transform);
-function transform(me, data, encoding, callback) {
-  var address = me.__my_addr;
 
-  address.service = address.service || me.__my_service;
-  me.push(Packer.pack(address, data));
-  callback();
-}
 MyTransform.prototype._transform = function (data, encoding, callback) {
-  return transform(this, data, encoding, callback);
+  var address = this.__my_addr;
+
+  address.service = address.service || this.__my_service;
+  this.push(Packer.pack(address, data));
+  callback();
 };
 
 Packer.Stream = {};
 var Dup = {
   write: function (chunk, encoding, cb) {
     //console.log('_write', chunk.byteLength);
-    this.__my_socket.write(chunk, encoding);
-    cb();
+    this.__my_socket.write(chunk, encoding, cb);
   }
 , read: function (size) {
     //console.log('_read');
@@ -302,6 +352,11 @@ var Dup = {
   }
 };
 Packer.Stream.create = function (socket) {
+  if (!Packer.Stream.warned) {
+    console.warn('`Stream.create` deprecated, use `wrapSocket` instead');
+    Packer.Stream.warned = true;
+  }
+
   // Workaround for
   // https://github.com/nodejs/node/issues/8854
 
