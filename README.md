@@ -1,4 +1,4 @@
-# tunnel-packer
+# proxy-packer
 
 | Sponsored by [ppl](https://ppl.family) |
 
@@ -7,7 +7,7 @@ A strategy for packing and unpacking tunneled network messages (or any stream) i
 Examples
 
 ```js
-var Packer = require('tunnel-packer');
+var Packer = require('proxy-packer');
 
 Packer.create({
   onmessage: function (msg) {
