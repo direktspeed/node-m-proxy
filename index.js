@@ -2,6 +2,23 @@
 
 var Packer = module.exports;
 
+var serviceEvents = {
+  default: 'tunnelData'
+, control: 'tunnelControl'
+, error:   'tunnelError'
+, end:     'tunnelEnd'
+, pause:   'tunnelPause'
+, resume:  'tunnelResume'
+};
+var serviceFuncs = {
+  default: 'onmessage'
+, control: 'oncontrol'
+, error:   'onerror'
+, end:     'onend'
+, pause:   'onpause'
+, resume:  'onresume'
+};
+
 Packer.create = function (opts) {
   var machine;
 
@@ -13,8 +30,10 @@ Packer.create = function (opts) {
 
   machine.onmessage = opts.onmessage || opts.onMessage;
   machine.oncontrol = opts.oncontrol || opts.onControl;
-  machine.onerror = opts.onerror || opts.onError;
-  machine.onend = opts.onend || opts.onEnd;
+  machine.onerror   = opts.onerror   || opts.onError;
+  machine.onend     = opts.onend     || opts.onEnd;
+  machine.onpause   = opts.onpause   || opts.onPause;
+  machine.onresume  = opts.onresume  || opts.onResume;
 
   machine._version = 1;
   machine.fns = {};
@@ -135,37 +154,10 @@ Packer.create = function (opts) {
     msg.service = machine.service;
     msg.data    = data;
 
-    if ('end' === machine.service) {
-      if (machine.emit) {
-        machine.emit('tunnelEnd', msg);
-      }
-      else {
-        (machine.onend||machine.onmessage)(msg);
-      }
-    }
-    else if ('error' === machine.service) {
-      if (machine.emit) {
-        machine.emit('tunnelError', msg);
-      }
-      else {
-        (machine.onerror||machine.onmessage)(msg);
-      }
-    }
-    else if ('control' === machine.service) {
-      if (machine.emit) {
-        machine.emit('tunnelControl', msg);
-      }
-      else {
-        (machine.oncontrol||machine.onmessage)(msg);
-      }
-    }
-    else {
-      if (machine.emit) {
-        machine.emit('tunnelData', msg);
-      }
-      else {
-        machine.onmessage(msg);
-      }
+    if (machine.emit) {
+      machine.emit(serviceEvents[msg.service] || serviceEvents.default);
+    } else {
+      (machine[serviceFuncs[msg.service]] || machine[serviceFuncs.default])(msg);
     }
 
     return true;
@@ -191,19 +183,16 @@ Packer.create = function (opts) {
 };
 
 Packer.pack = function (address, data, service) {
-  data = data || Buffer.alloc(1);
+  data = data || Buffer.from(' ');
   if (!Buffer.isBuffer(data)) {
     data = new Buffer(JSON.stringify(data));
   }
   if (!data.byteLength) {
-    data = Buffer.alloc(1);
+    data = Buffer.from(' ');
   }
 
-  if ('error' === service) {
-    address.service = 'error';
-  }
-  else if ('end' === service) {
-    address.service = 'end';
+  if (service && service !== 'control') {
+    address.service = service;
   }
 
   var version = 1;
@@ -262,21 +251,25 @@ Packer.socketToId = function (socket) {
 };
 
 
-/*
- *
- * Tunnel Packer
- *
- */
-
-  var addressNames = [
-    'remoteAddress'
-  , 'remotePort'
-  , 'remoteFamily'
-  , 'localAddress'
-  , 'localPort'
-  ];
-// Imporoved workaround for  https://github.com/nodejs/node/issues/8854
-// Unlike Duplex this should handle all of the events needed to make everything work.
+var addressNames = [
+  'remoteAddress'
+, 'remotePort'
+, 'remoteFamily'
+, 'localAddress'
+, 'localPort'
+];
+var sockFuncs = [
+  'address'
+, 'destroy'
+, 'ref'
+, 'unref'
+, 'setEncoding'
+, 'setKeepAlive'
+, 'setNoDelay'
+, 'setTimeout'
+];
+// Improved workaround for  https://github.com/nodejs/node/issues/8854
+// Unlike Packer.Stream.create this should handle all of the events needed to make everything work.
 Packer.wrapSocket = function (socket) {
   var myDuplex = new require('stream').Duplex();
   addressNames.forEach(function (name) {
@@ -310,7 +303,13 @@ Packer.wrapSocket = function (socket) {
   socket.on('close', function () {
     myDuplex.emit('close');
   });
-  myDuplex.destroy = socket.destroy.bind(socket);
+  sockFuncs.forEach(function (name) {
+    if (typeof socket[name] !== 'function') {
+      console.warn('expected `'+name+'` to be a function on wrapped socket');
+    } else {
+      myDuplex[name] = socket[name].bind(socket);
+    }
+  });
 
   return myDuplex;
 };
