@@ -13,6 +13,8 @@ Browser <---- M-PROXY Service ----> Device
 Browser <--/                   \--> Device
 ```
 
+<small>Many clients may connect to a single device. A single client may connect to many devices.</small>
+
 It's the kind of thing you'd use to build a poor man's VPN, or port-forward router.
 
 The M-PROXY Protocol
@@ -48,7 +50,11 @@ data length              (string) the number of bytes in the wrapped packet, in 
                                   These optional values can be very useful at the start of a new connection
 service name             (string) Either a standard service name (port + protocol), such as 'https'
                                   as listed in /etc/services, otherwise 'tls', 'tcp', or 'udp' for generics
-                                  Also 'control' and 'error' are used for messages with the proxy (i.e. authentication)
+                                  Also used for messages with the proxy (i.e. authentication)
+                                    * 'control' for authentication, etc
+                                    * 'error' for a specific client
+                                    * 'pause' to pause upload to a specific client (not the whole tunnel)
+                                    * 'resume' to resume upload to a specific client (not the whole tunnel)
 service port             (string) The listening port, such as 443. Useful for non-standard or dynamic services.
 host or server name      (string) Useful for services that can be routed by name, such as http, https, smtp, and dns.
 ```
