@@ -282,11 +282,12 @@ Packer.socketToAddr = function (socket) {
   // tlsSocket.remoteAddress = remoteAddress; // causes core dump
   // console.log(tlsSocket.remoteAddress);
 
-  var props = extractSocketProps(socket, [ 'remoteFamily', 'remoteAddress', 'remotePort' ]);
+  var props = extractSocketProps(socket, [ 'remoteFamily', 'remoteAddress', 'remotePort', 'localPort' ]);
   return {
     family:  props.remoteFamily
   , address: props.remoteAddress
   , port:    props.remotePort
+  , serviceport: props.localPort
   };
 };
 
