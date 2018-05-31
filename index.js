@@ -317,9 +317,21 @@ var sockFuncs = [
 , 'setNoDelay'
 , 'setTimeout'
 ];
-// Improved workaround for  https://github.com/nodejs/node/issues/8854
 // Unlike Packer.Stream.create this should handle all of the events needed to make everything work.
 Packer.wrapSocket = function (socket) {
+  // node v10.2+ doesn't need a workaround for  https://github.com/nodejs/node/issues/8854
+  addressNames.forEach(function (name) {
+    Object.defineProperty(socket, name, {
+      enumerable: false,
+      configurable: true,
+      get: function() {
+        return extractSocketProp(socket, name);
+      }
+    });
+  });
+  return socket;
+  // Improved workaround for  https://github.com/nodejs/node/issues/8854
+  /*
   // TODO use defineProperty to override remotePort, etc
   var myDuplex = new require('stream').Duplex();
   addressNames.forEach(function (name) {
@@ -362,6 +374,7 @@ Packer.wrapSocket = function (socket) {
   });
 
   return myDuplex;
+  */
 };
 
 var Transform = require('stream').Transform;
