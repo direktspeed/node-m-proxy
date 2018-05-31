@@ -2,32 +2,123 @@
 
 | Sponsored by [ppl](https://ppl.family) |
 
-A strategy for packing and unpacking tunneled network messages (or any stream) in node.js
+"The M-PROXY Protocol" for node.js
 
-Examples
+A strategy for packing and unpacking multiplexed streams.
+<small>Where you have distinct clients on one side trying to reach distinct servers on the other.</small>
+
+```
+Browser <--\                   /--> Device
+Browser <---- M-PROXY Service ----> Device
+Browser <--/                   \--> Device
+```
+
+It's the kind of thing you'd use to build a poor man's VPN, or port-forward router.
+
+The M-PROXY Protocol
+===================
+
+This is similar to "The PROXY Protocol" (a la HAProxy), but desgined for multiplexed tls, http, tcp, and udp
+tunneled over arbitrary streams (such as WebSockets).
+
+It also has a backchannel for communicating with the proxy itself.
+
+Each message has a header with a socket identifier (family, addr, port), and may have additional information.
+
+```
+<version><headerlen><family>,<address>,<port>,<datalen>,<service>,<port>,<name>
+```
+
+```
+<254><45>IPv4,127.0.1.1,4321,199,https,443,example.com
+```
+
+```
+version                  (8 bits) 254 is version 1
+
+header length            (8 bits) the remaining length of the header before data begins
+
+                                  These values are used to identify a specific client among many
+socket family            (string) the IPv4 or IPv6 connection from a client
+socket address           (string) the x.x.x.x remote address of the client
+socket port              (string) the 1-65536 source port of the remote client
+
+data length              (string) the number of bytes in the wrapped packet, in case the network re-chunks the packet
+
+                                  These optional values can be very useful at the start of a new connection
+service name             (string) Either a standard service name (port + protocol), such as 'https'
+                                  as listed in /etc/services, otherwise 'tls', 'tcp', or 'udp' for generics
+                                  Also 'control' is used for messages to the proxy (such as 'pause' events)
+service port             (string) The listening port, such as 443. Useful for non-standard or dynamic services.
+host or server name      (string) Useful for services that can be routed by name, such as http, https, smtp, and dns.
+```
+
+v1 is text-based. Future versions may be binary.
+
+API
+===
 
 ```js
 var Packer = require('proxy-packer');
+```
 
-Packer.create({
-  onmessage: function (msg) {
-    // msg = { family, address, port, service, data };
-  }
-, onend: function (msg) {
-    // msg = { family, address, port };
-  }
-, onerror: function (err) {
-    // err = { message, family, address, port };
-  }
-});
+```js
+unpacker = Packer.create(handlers);                       // Create a state machine for unpacking
 
-var chunk = Packer.pack(address, data, service);
-var addr = Packer.socketToAddr(socket);
-var id = Packer.addrToId(address);
-var id = Packer.socketToId(socket);
+handlers.oncontrol = function (tun) { }                   // for communicating with the proxy
+                                                          // tun.data is an array
+                                                          //     '[ -1, "[Error] bad hello" ]'
+                                                          //     '[ 0, "[Error] out-of-band error message" ]'
+                                                          //     '[ 1, "hello", 254, [ "add_token", "delete_token" ] ]'
+                                                          //     '[ 1, "add_token" ]'
+                                                          //     '[ 1, "delete_token" ]'
 
-var myDuplex = Packer.Stream.create(socketOrStream);
+handlers.onmessage = function (tun) { }                   // a client has sent a message
+                                                          // tun = { family, address, port, data
+                                                          //       , service, serviceport, name };
 
+handlers.onpause = function (tun) { }                     // proxy requests to pause upload to a client
+                                                          // tun = { family, address, port };
+
+handlers.onresume = function (tun) { }                    // proxy requests to resume upload to a client
+                                                          // tun = { family, address, port };
+
+handlers.onend = function (tun) { }                       // proxy requests to close a client's socket
+                                                          // tun = { family, address, port };
+
+handlers.onerror = function (err) { }                     // proxy is relaying a client's error
+                                                          // err = { message, family, address, port };
+```
+
+<!--
+TODO
+
+handlers.onconnect = function (tun) { }                   // a new client has connected
+
+-->
+
+```js
+var chunk = Packer.pack(tun, data);                       // Add M-PROXY header to data
+                                                          // tun = { family, address, port
+                                                          //       , service, serviceport, name }
+
+var addr = Packer.socketToAddr(socket);                   // Probe raw, raw socket for address info
+
+var id = Packer.addrToId(address);                        // Turn M-PROXY address info into a deterministic id
+
+var id = Packer.socketToId(socket);                       // Turn raw, raw socket info into a deterministic id
+```
+
+## API Helpers
+
+```js
+var socket = Packer.Stream.wrapSocket(socketOrStream);   // workaround for https://github.com/nodejs/node/issues/8854
+                                                         // which was just closed recently, but probably still needs
+                                                         // something more like this (below) to work as intended
+                                                         // https://github.com/findhit/proxywrap/blob/master/lib/proxywrap.js
+```
+
+```js
 var myTransform = Packer.Transform.create({
   address: {
     family: '...'
@@ -45,7 +136,7 @@ If you want to write a compatible packer, just make sure that for any given inpu
 you get the same output as the packer does.
 
 ```bash
-node test-pack.js input.json output.bin
+node test/pack.js input.json output.bin
 hexdump output.bin
 ```
 
@@ -57,8 +148,10 @@ Where `input.json` looks something like this:
 , "address": {
     "family": "IPv4"
   , "address": "127.0.1.1"
-  , "port": 443
+  , "port": 4321
   , "service": "foo"
+  , "serviceport": 443
+  , "name": 'example.com'
   }
 , "filepath": "./sni.tcp.bin"
 }

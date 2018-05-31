@@ -2,8 +2,9 @@
 , "address": {
     "family": "IPv4"
   , "address": "127.0.1.1"
-  , "port": 443
-  , "service": "foo"
+  , "port": 4321
+  , "service": "https"
+  , "serviceport": 443
   }
 , "filepath": "./sni.hello.bin"
 }

@@ -120,6 +120,8 @@ Packer.create = function (opts) {
     machine.port    = machine._headers[2];
     machine.bodyLen = parseInt(machine._headers[3], 10) || 0;
     machine.service = machine._headers[4];
+    machine.serviceport = machine._headers[5];
+    machine.name = machine._headers[6];
     //console.log('machine.service', machine.service);
 
     return true;
@@ -148,11 +150,13 @@ Packer.create = function (opts) {
       }
     }
 
-    msg.family  = machine.family;
-    msg.address = machine.address;
-    msg.port    = machine.port;
-    msg.service = machine.service;
-    msg.data    = data;
+    msg.family      = machine.family;
+    msg.address     = machine.address;
+    msg.port        = machine.port;
+    msg.service     = machine.service;
+    msg.serviceport = machine.serviceport;
+    msg.name        = machine.name;
+    msg.data        = data;
 
     if (machine.emit) {
       machine.emit(serviceEvents[msg.service] || serviceEvents.default);
@@ -182,7 +186,7 @@ Packer.create = function (opts) {
   return machine;
 };
 
-Packer.pack = function (address, data, service) {
+Packer.pack = function (meta, data, service) {
   data = data || Buffer.from(' ');
   if (!Buffer.isBuffer(data)) {
     data = new Buffer(JSON.stringify(data));
@@ -192,7 +196,7 @@ Packer.pack = function (address, data, service) {
   }
 
   if (service && service !== 'control') {
-    address.service = service;
+    meta.service = service;
   }
 
   var version = 1;
@@ -202,13 +206,14 @@ Packer.pack = function (address, data, service) {
   }
   else {
     header = Buffer.from([
-      address.family, address.address, address.port, data.byteLength, (address.service || '')
+      meta.family, meta.address, meta.port, data.byteLength,
+      (meta.service || ''), (meta.serviceport || ''), (meta.name || '')
     ].join(','));
   }
-  var meta = Buffer.from([ 255 - version, header.length ]);
-  var buf = Buffer.alloc(meta.byteLength + header.byteLength + data.byteLength);
+  var metaBuf = Buffer.from([ 255 - version, header.length ]);
+  var buf = Buffer.alloc(metaBuf.byteLength + header.byteLength + data.byteLength);
 
-  meta.copy(buf, 0);
+  metaBuf.copy(buf, 0);
   header.copy(buf, 2);
   data.copy(buf, 2 + header.byteLength);
 
@@ -323,6 +328,8 @@ function MyTransform(options) {
   }
   this.__my_addr = options.address;
   this.__my_service = options.service;
+  this.__my_serviceport = options.serviceport;
+  this.__my_name = options.name;
   Transform.call(this, options);
 }
 util.inherits(MyTransform, Transform);
@@ -331,6 +338,8 @@ MyTransform.prototype._transform = function (data, encoding, callback) {
   var address = this.__my_addr;
 
   address.service = address.service || this.__my_service;
+  address.serviceport = address.serviceport || this.__my_serviceport;
+  address.name = address.name || this.__my_name;
   this.push(Packer.pack(address, data));
   callback();
 };

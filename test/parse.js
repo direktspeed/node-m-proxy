@@ -1,16 +1,18 @@
 'use strict';
 
 var sni = require('sni');
-var hello = require('fs').readFileSync('./sni.hello.bin');
+var hello = require('fs').readFileSync(__dirname + '/sni.hello.bin');
 var version = 1;
 var address = {
   family: 'IPv4'
 , address: '127.0.1.1'
-, port: 443
-, service: 'foo'
+, port: 4321
+, service: 'foo-https'
+, serviceport: 443
+, name: 'foo-pokemap.hellabit.com'
 };
 var header = address.family + ',' + address.address + ',' + address.port + ',' + hello.byteLength
-  + ',' + (address.service || '')
+  + ',' + (address.service || '') + ',' + (address.serviceport || '') + ',' + (address.name || '')
   ;
 var buf = Buffer.concat([
   Buffer.from([ 255 - version, header.length ])
@@ -20,21 +22,21 @@ var buf = Buffer.concat([
 var services = { 'ssh': 22, 'http': 4080, 'https': 8443 };
 var clients = {};
 var count = 0;
-var packer = require('./');
+var packer = require('../');
 var machine = packer.create({
-  onmessage: function (opts) {
-    var id = opts.family + ',' + opts.address + ',' + opts.port;
+  onmessage: function (tun) {
+    var id = tun.family + ',' + tun.address + ',' + tun.port;
     var service = 'https';
     var port = services[service];
-    var servername = sni(opts.data);
+    var servername = sni(tun.data);
 
     console.log('');
     console.log('[onMessage]');
-    if (!opts.data.equals(hello)) {
+    if (!tun.data.equals(hello)) {
       throw new Error("'data' packet is not equal to original 'hello' packet");
     }
-    console.log('all', opts.data.byteLength, 'bytes are equal');
-    console.log('src:', opts.family, opts.address + ':' + opts.port);
+    console.log('all', tun.data.byteLength, 'bytes are equal');
+    console.log('src:', tun.family, tun.address + ':' + tun.port + ':' + tun.serviceport);
     console.log('dst:', 'IPv4 127.0.0.1:' + port);
 
     if (!clients[id]) {
@@ -42,7 +44,7 @@ var machine = packer.create({
       if (!servername) {
         throw new Error("no servername found for '" + id + "'");
       }
-      console.log("servername: '" + servername + "'");
+      console.log("servername: '" + servername + "'", tun.name);
     }
 
     count += 1;
