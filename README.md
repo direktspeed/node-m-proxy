@@ -48,7 +48,7 @@ data length              (string) the number of bytes in the wrapped packet, in 
                                   These optional values can be very useful at the start of a new connection
 service name             (string) Either a standard service name (port + protocol), such as 'https'
                                   as listed in /etc/services, otherwise 'tls', 'tcp', or 'udp' for generics
-                                  Also 'control' is used for messages to the proxy (such as 'pause' events)
+                                  Also 'control' and 'error' are used for messages with the proxy (i.e. authentication)
 service port             (string) The listening port, such as 443. Useful for non-standard or dynamic services.
 host or server name      (string) Useful for services that can be routed by name, such as http, https, smtp, and dns.
 ```
