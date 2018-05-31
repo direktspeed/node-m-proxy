@@ -220,6 +220,48 @@ Packer.pack = function (meta, data, service) {
   return buf;
 };
 
+function extractSocketProps(socket, propNames) {
+  var props = {};
+
+  if (socket.remotePort) {
+    propNames.forEach(function (propName) {
+      props[propName] = socket[propName];
+    });
+  } else if (socket._remotePort) {
+    propNames.forEach(function (propName) {
+      props[propName] = socket['_' + propName];
+    });
+  } else if (
+    socket._handle
+    && socket._handle._parent
+    && socket._handle._parent.owner
+    && socket._handle._parent.owner.stream
+    && socket._handle._parent.owner.stream.remotePort
+  ) {
+    propNames.forEach(function (propName) {
+      props[propName] = socket._handle._parent.owner.stream[propName];
+    });
+  } else if (
+    socket._handle._parentWrap
+    && socket._handle._parentWrap
+    && socket._handle._parentWrap.remotePort
+  ) {
+    propNames.forEach(function (propName) {
+      props[propName] = socket._handle._parentWrap[propName];
+    });
+  } else if (
+    socket._handle._parentWrap
+    && socket._handle._parentWrap._handle
+    && socket._handle._parentWrap._handle.owner
+    && socket._handle._parentWrap._handle.owner.stream
+    && socket._handle._parentWrap._handle.owner.stream.remotePort
+  ) {
+    propNames.forEach(function (propName) {
+      props[propName] = socket._handle._parentWrap._handle.owner.stream[propName];
+    });
+  }
+  return props;
+}
 function extractSocketProp(socket, propName) {
   // remoteAddress, remotePort... ugh... https://github.com/nodejs/node/issues/8854
   var value = socket[propName] || socket['_' + propName];
@@ -240,10 +282,11 @@ Packer.socketToAddr = function (socket) {
   // tlsSocket.remoteAddress = remoteAddress; // causes core dump
   // console.log(tlsSocket.remoteAddress);
 
+  var props = extractSocketProps(socket, [ 'remoteFamily', 'remoteAddress', 'remotePort' ]);
   return {
-    family:  extractSocketProp(socket, 'remoteFamily')
-  , address: extractSocketProp(socket, 'remoteAddress')
-  , port:    extractSocketProp(socket, 'remotePort')
+    family:  props.remoteFamily
+  , address: props.remoteAddress
+  , port:    props.remotePort
   };
 };
 
@@ -276,6 +319,7 @@ var sockFuncs = [
 // Improved workaround for  https://github.com/nodejs/node/issues/8854
 // Unlike Packer.Stream.create this should handle all of the events needed to make everything work.
 Packer.wrapSocket = function (socket) {
+  // TODO use defineProperty to override remotePort, etc
   var myDuplex = new require('stream').Duplex();
   addressNames.forEach(function (name) {
     myDuplex[name] = extractSocketProp(socket, name);
