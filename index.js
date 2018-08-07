@@ -126,6 +126,7 @@ Packer.create = function (opts) {
     machine.service     = machine._headers[4];
     machine.serviceport = machine._headers[5];
     machine.name        = machine._headers[6];
+    machine.servicename = machine._headers[7];
     //console.log('machine.service', machine.service);
 
     return true;
@@ -167,10 +168,15 @@ Packer.create = function (opts) {
     msg.name        = machine.name;
     msg.data        = data;
 
+    if ('connection' === machine.service) {
+      msg.service = machine.servicename;
+    }
+
+    //console.log('msn', machine.service);
     if (machine.emit) {
-      machine.emit(serviceEvents[msg.service] || serviceEvents.default);
+      machine.emit(serviceEvents[machine.service] || serviceEvents[msg.service] || serviceEvents.default);
     } else {
-      (machine[serviceFuncs[msg.service]] || machine[serviceFuncs.default])(msg);
+      (machine[serviceFuncs[machine.service]] || machine[serviceFuncs[msg.service]] || machine[serviceFuncs.default])(msg);
     }
 
     return true;
@@ -190,14 +196,19 @@ Packer.create = function (opts) {
         machine.state %= machine.states.length;
       }
     }
+    if ('data' === machine.states[machine.state] && 0 === machine.bodyLen) {
+      machine.fns[machine.states[machine.state]](chunk)
+      machine.state += 1;
+      machine.state %= machine.states.length;
+    }
   };
 
   return machine;
 };
 
 Packer.packHeader = function (meta, data, service, andBody, oldways) {
-  if (oldways) {
-    data = data || Buffer.from(' ');
+  if (oldways && !data) {
+    data = Buffer.from(' ');
   }
   if (data && !Buffer.isBuffer(data)) {
     data = new Buffer(JSON.stringify(data));
@@ -206,7 +217,8 @@ Packer.packHeader = function (meta, data, service, andBody, oldways) {
     data = Buffer.from(' ');
   }
 
-  if (service && service !== 'control') {
+  if (service && -1 === ['control','connection'].indexOf(service)) {
+    //console.log('end?', service);
     meta.service = service;
   }
 
@@ -216,6 +228,13 @@ Packer.packHeader = function (meta, data, service, andBody, oldways) {
   var header;
   if (service === 'control') {
     header = Buffer.from(['', '', '', size, service].join(','));
+  }
+  else if (service === 'connection') {
+    header = Buffer.from([
+      meta.family, meta.address, meta.port, size,
+      'connection', (meta.serviceport || ''), (meta.name || ''),
+      (meta.service || '')
+    ].join(','));
   }
   else {
     header = Buffer.from([
@@ -323,6 +342,7 @@ var addressNames = [
 , 'localAddress'
 , 'localPort'
 ];
+/*
 var sockFuncs = [
   'address'
 , 'destroy'
@@ -333,6 +353,7 @@ var sockFuncs = [
 , 'setNoDelay'
 , 'setTimeout'
 ];
+*/
 // Unlike Packer.Stream.create this should handle all of the events needed to make everything work.
 Packer.wrapSocket = function (socket) {
   // node v10.2+ doesn't need a workaround for  https://github.com/nodejs/node/issues/8854
