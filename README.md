@@ -51,7 +51,8 @@ data length              (string) the number of bytes in the wrapped packet, in 
 service name             (string) Either a standard service name (port + protocol), such as 'https'
                                   as listed in /etc/services, otherwise 'tls', 'tcp', or 'udp' for generics
                                   Also used for messages with the proxy (i.e. authentication)
-                                    * 'control' for authentication, etc
+                                    * 'control' for proxy<->server messages, including authentication, health, etc
+                                    * 'connection' for a specific client
                                     * 'error' for a specific client
                                     * 'pause' to pause upload to a specific client (not the whole tunnel)
                                     * 'resume' to resume upload to a specific client (not the whole tunnel)
@@ -97,8 +98,36 @@ API
 var Packer = require('proxy-packer');
 ```
 
+Unpacker / Parser State Machine
+-----------------------
+
+The unpacker creates a state machine.
+
+Each data chunk going in must be in sequence (tcp guarantees this),
+composing a full message with header and data (unless data length is 0).
+
+The state machine progresses through these states:
+
+* version
+* headerLength
+* header
+* data
+
+At the end of the data event (which may or may not contain a buffer of data)
+one of the appropriate handlers will be called.
+
+* control
+* connection
+* message
+* pause
+* resume
+* end
+* error
+
 ```js
 unpacker = Packer.create(handlers);                       // Create a state machine for unpacking
+
+unpacker.fns.addData(chunk);                              // process a chunk of data
 
 handlers.oncontrol = function (tun) { }                   // for communicating with the proxy
                                                           // tun.data is an array
@@ -107,6 +136,8 @@ handlers.oncontrol = function (tun) { }                   // for communicating w
                                                           //     '[ 1, "hello", 254, [ "add_token", "delete_token" ] ]'
                                                           //     '[ 1, "add_token" ]'
                                                           //     '[ 1, "delete_token" ]'
+
+handlers.onconnection = function (tun) { }                // a client has established a connection
 
 handlers.onmessage = function (tun) { }                   // a client has sent a message
                                                           // tun = { family, address, port, data
@@ -132,10 +163,18 @@ handlers.onconnect = function (tun) { }                   // a new client has co
 
 -->
 
+Packer & Extras
+------
+
+Packs header metadata about connection into a buffer (potentially with original data), ready to send.
+
 ```js
-var chunk = Packer.pack(tun, data);                       // Add M-PROXY header to data
+var headerAndBody = Packer.pack(tun, data);               // Add M-PROXY header to data
                                                           // tun = { family, address, port
                                                           //       , service, serviceport, name }
+
+var headerBuf = Packer.packHeader(tun, data);             // Same as above, but creates a buffer for header only
+                                                          // (data can be converted to a buffer or sent as-is)
 
 var addr = Packer.socketToAddr(socket);                   // Probe raw, raw socket for address info
 
