@@ -4,6 +4,7 @@ var Packer = module.exports;
 
 var serviceEvents = {
   default: 'tunnelData'
+, connection: 'tunnelConnection'
 , control: 'tunnelControl'
 , error:   'tunnelError'
 , end:     'tunnelEnd'
@@ -12,6 +13,7 @@ var serviceEvents = {
 };
 var serviceFuncs = {
   default: 'onmessage'
+, connection: 'onconnection'
 , control: 'oncontrol'
 , error:   'onerror'
 , end:     'onend'
@@ -28,12 +30,13 @@ Packer.create = function (opts) {
     machine = {};
   }
 
-  machine.onmessage = opts.onmessage || opts.onMessage;
-  machine.oncontrol = opts.oncontrol || opts.onControl;
-  machine.onerror   = opts.onerror   || opts.onError;
-  machine.onend     = opts.onend     || opts.onEnd;
-  machine.onpause   = opts.onpause   || opts.onPause;
-  machine.onresume  = opts.onresume  || opts.onResume;
+  machine.onmessage    = opts.onmessage    || opts.onMessage;
+  machine.oncontrol    = opts.oncontrol    || opts.onControl;
+  machine.onconnection = opts.onconnection || opts.onConnection || function () {};
+  machine.onerror      = opts.onerror      || opts.onError;
+  machine.onend        = opts.onend        || opts.onEnd;
+  machine.onpause      = opts.onpause      || opts.onPause;
+  machine.onresume     = opts.onresume     || opts.onResume;
 
   machine._version = 1;
   machine.fns = {};
@@ -43,8 +46,9 @@ Packer.create = function (opts) {
   machine.bufIndex = 0;
   machine.fns.collectData = function (chunk, size) {
     var chunkLeft = chunk.length - machine.chunkIndex;
+    var hasLen = (size > 0);
 
-    if (size <= 0) {
+    if (!hasLen) {
       return Buffer.alloc(0);
     }
 
@@ -115,13 +119,13 @@ Packer.create = function (opts) {
 
     machine._headers = header.toString().split(/,/g);
 
-    machine.family  = machine._headers[0];
-    machine.address = machine._headers[1];
-    machine.port    = machine._headers[2];
-    machine.bodyLen = parseInt(machine._headers[3], 10) || 0;
-    machine.service = machine._headers[4];
+    machine.family      = machine._headers[0];
+    machine.address     = machine._headers[1];
+    machine.port        = machine._headers[2];
+    machine.bodyLen     = parseInt(machine._headers[3], 10) || 0;
+    machine.service     = machine._headers[4];
     machine.serviceport = machine._headers[5];
-    machine.name = machine._headers[6];
+    machine.name        = machine._headers[6];
     //console.log('machine.service', machine.service);
 
     return true;
@@ -130,12 +134,17 @@ Packer.create = function (opts) {
   machine.fns.data = function (chunk) {
     //console.log('');
     //console.log('[data]');
-    var data = machine.fns.collectData(chunk, machine.bodyLen);
-
-    // We don't have the entire body yet so return false.
-    if (!data) {
-      return false;
+    var data;
+    // The 'connection' event may not have a body
+    // Other events may not have a body either
+    if (machine.bodyLen) {
+      data = machine.fns.collectData(chunk, machine.bodyLen);
+      // We don't have the entire body yet so return false.
+      if (!data) {
+        return false;
+      }
     }
+
 
     //
     // data, end, error
@@ -186,12 +195,14 @@ Packer.create = function (opts) {
   return machine;
 };
 
-Packer.pack = function (meta, data, service) {
-  data = data || Buffer.from(' ');
-  if (!Buffer.isBuffer(data)) {
+Packer.packHeader = function (meta, data, service, andBody, oldways) {
+  if (oldways) {
+    data = data || Buffer.from(' ');
+  }
+  if (data && !Buffer.isBuffer(data)) {
     data = new Buffer(JSON.stringify(data));
   }
-  if (!data.byteLength) {
+  if (oldways && !data.byteLength) {
     data = Buffer.from(' ');
   }
 
@@ -199,25 +210,30 @@ Packer.pack = function (meta, data, service) {
     meta.service = service;
   }
 
+  var size = data && data.byteLength || 0;
+  var sizeReserve = andBody ? size : 0;
   var version = 1;
   var header;
   if (service === 'control') {
-    header = Buffer.from(['', '', '', data.byteLength, service].join(','));
+    header = Buffer.from(['', '', '', size, service].join(','));
   }
   else {
     header = Buffer.from([
-      meta.family, meta.address, meta.port, data.byteLength,
+      meta.family, meta.address, meta.port, size,
       (meta.service || ''), (meta.serviceport || ''), (meta.name || '')
     ].join(','));
   }
   var metaBuf = Buffer.from([ 255 - version, header.length ]);
-  var buf = Buffer.alloc(metaBuf.byteLength + header.byteLength + data.byteLength);
+  var buf = Buffer.alloc(metaBuf.byteLength + header.byteLength + sizeReserve);
 
   metaBuf.copy(buf, 0);
   header.copy(buf, 2);
-  data.copy(buf, 2 + header.byteLength);
+  if (sizeReserve) { data.copy(buf, 2 + header.byteLength); }
 
   return buf;
+};
+Packer.pack = function (meta, data, service) {
+  return Packer.packHeader(meta, data, service, true, true);
 };
 
 function extractSocketProps(socket, propNames) {
