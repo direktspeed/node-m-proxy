@@ -211,7 +211,7 @@ Packer.packHeader = function (meta, data, service, andBody, oldways) {
     data = Buffer.from(' ');
   }
   if (data && !Buffer.isBuffer(data)) {
-    data = new Buffer(JSON.stringify(data));
+    data = Buffer.from(JSON.stringify(data));
   }
   if (oldways && !data.byteLength) {
     data = Buffer.from(' ');
