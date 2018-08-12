@@ -155,7 +155,7 @@ Packer.create = function (opts) {
       try {
         msg = JSON.parse(data.toString());
       } catch(e) {
-        msg.message = data.toString();
+        msg.message = 'e:' + JSON.stringify(data);
         msg.code = 'E_UNKNOWN_ERR';
       }
     }
