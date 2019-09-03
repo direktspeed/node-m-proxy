@@ -1,6 +1,6 @@
 {
   "name": "proxy-packer",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "description": "A strategy for packing and unpacking a proxy stream (i.e. packets through a tunnel). Handles multiplexed and tls connections. Used by telebit and telebitd.",
   "main": "index.js",
   "scripts": {
