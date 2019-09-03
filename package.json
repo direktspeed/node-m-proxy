@@ -1,40 +1,40 @@
 {
-  "name": "proxy-packer",
-  "version": "2.0.3",
-  "description": "A strategy for packing and unpacking a proxy stream (i.e. packets through a tunnel). Handles multiplexed and tls connections. Used by telebit and telebitd.",
-  "main": "index.js",
-  "scripts": {
-    "test": "node test.js"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://git.coolaj86.com/coolaj86/proxy-packer.js.git"
-  },
-  "keywords": [
-    "tunnel",
-    "telebit",
-    "telebitd",
-    "localtunnel",
-    "ngrok",
-    "underpass",
-    "tcp",
-    "sni",
-    "https",
-    "ssl",
-    "tls",
-    "http",
-    "proxy",
-    "pack",
-    "unpack",
-    "message",
-    "msg",
-    "packer",
-    "unpacker"
-  ],
-  "author": "AJ ONeal <coolaj86@gmail.com> (https://coolaj86.com/)",
-  "license": "(MIT OR Apache-2.0)",
-  "bugs": {
-    "url": "https://git.coolaj86.com/coolaj86/proxy-packer.js/issues"
-  },
-  "homepage": "https://git.coolaj86.com/coolaj86/proxy-packer.js#readme"
+	"name": "proxy-packer",
+	"version": "2.0.4",
+	"description": "A strategy for packing and unpacking a proxy stream (i.e. packets through a tunnel). Handles multiplexed and tls connections. Used by telebit and telebitd.",
+	"main": "index.js",
+	"scripts": {
+		"test": "node test.js"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://git.coolaj86.com/coolaj86/proxy-packer.js.git"
+	},
+	"keywords": [
+		"tunnel",
+		"telebit",
+		"telebitd",
+		"localtunnel",
+		"ngrok",
+		"underpass",
+		"tcp",
+		"sni",
+		"https",
+		"ssl",
+		"tls",
+		"http",
+		"proxy",
+		"pack",
+		"unpack",
+		"message",
+		"msg",
+		"packer",
+		"unpacker"
+	],
+	"author": "AJ ONeal <coolaj86@gmail.com> (https://coolaj86.com/)",
+	"license": "(MIT OR Apache-2.0)",
+	"bugs": {
+		"url": "https://git.coolaj86.com/coolaj86/proxy-packer.js/issues"
+	},
+	"homepage": "https://git.coolaj86.com/coolaj86/proxy-packer.js#readme"
 }

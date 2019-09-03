@@ -17,8 +17,7 @@ Browser <--/                   \--> Device
 
 It's the kind of thing you'd use to build a poor man's VPN, or port-forward router.
 
-The M-PROXY Protocol
-===================
+# The M-PROXY Protocol
 
 This is similar to "The PROXY Protocol" (a la HAProxy), but desgined for multiplexed tls, http, tcp, and udp
 tunneled over arbitrary streams (such as WebSockets).
@@ -60,8 +59,7 @@ service port             (string) The listening port, such as 443. Useful for no
 host or server name      (string) Useful for services that can be routed by name, such as http, https, smtp, and dns.
 ```
 
-Tunneled TCP SNI Packet
------------------------
+## Tunneled TCP SNI Packet
 
 You should see that the result is simply all of the original packet with a leading header.
 
@@ -91,15 +89,13 @@ Note that `16 03 01 00` starts at the 29th byte (at index 28 or 0x1C) instead of
 The v1 header uses strings for address and service descriptor information,
 but future versions may be binary.
 
-API
-===
+# API
 
 ```js
 var Packer = require('proxy-packer');
 ```
 
-Unpacker / Parser State Machine
------------------------
+## Unpacker / Parser State Machine
 
 The unpacker creates a state machine.
 
@@ -108,52 +104,52 @@ composing a full message with header and data (unless data length is 0).
 
 The state machine progresses through these states:
 
-* version
-* headerLength
-* header
-* data
+-   version
+-   headerLength
+-   header
+-   data
 
 At the end of the data event (which may or may not contain a buffer of data)
 one of the appropriate handlers will be called.
 
-* control
-* connection
-* message
-* pause
-* resume
-* end
-* error
+-   control
+-   connection
+-   message
+-   pause
+-   resume
+-   end
+-   error
 
 ```js
-unpacker = Packer.create(handlers);                       // Create a state machine for unpacking
+unpacker = Packer.create(handlers); // Create a state machine for unpacking
 
-unpacker.fns.addData(chunk);                              // process a chunk of data
+unpacker.fns.addData(chunk); // process a chunk of data
 
-handlers.oncontrol = function (tun) { }                   // for communicating with the proxy
-                                                          // tun.data is an array
-                                                          //     '[ -1, "[Error] bad hello" ]'
-                                                          //     '[ 0, "[Error] out-of-band error message" ]'
-                                                          //     '[ 1, "hello", 254, [ "add_token", "delete_token" ] ]'
-                                                          //     '[ 1, "add_token" ]'
-                                                          //     '[ 1, "delete_token" ]'
+handlers.oncontrol = function(tun) {}; // for communicating with the proxy
+// tun.data is an array
+//     '[ -1, "[Error] bad hello" ]'
+//     '[ 0, "[Error] out-of-band error message" ]'
+//     '[ 1, "hello", 254, [ "add_token", "delete_token" ] ]'
+//     '[ 1, "add_token" ]'
+//     '[ 1, "delete_token" ]'
 
-handlers.onconnection = function (tun) { }                // a client has established a connection
+handlers.onconnection = function(tun) {}; // a client has established a connection
 
-handlers.onmessage = function (tun) { }                   // a client has sent a message
-                                                          // tun = { family, address, port, data
-                                                          //       , service, serviceport, name };
+handlers.onmessage = function(tun) {}; // a client has sent a message
+// tun = { family, address, port, data
+//       , service, serviceport, name };
 
-handlers.onpause = function (tun) { }                     // proxy requests to pause upload to a client
-                                                          // tun = { family, address, port };
+handlers.onpause = function(tun) {}; // proxy requests to pause upload to a client
+// tun = { family, address, port };
 
-handlers.onresume = function (tun) { }                    // proxy requests to resume upload to a client
-                                                          // tun = { family, address, port };
+handlers.onresume = function(tun) {}; // proxy requests to resume upload to a client
+// tun = { family, address, port };
 
-handlers.onend = function (tun) { }                       // proxy requests to close a client's socket
-                                                          // tun = { family, address, port };
+handlers.onend = function(tun) {}; // proxy requests to close a client's socket
+// tun = { family, address, port };
 
-handlers.onerror = function (err) { }                     // proxy is relaying a client's error
-                                                          // err = { message, family, address, port };
+handlers.onerror = function(err) {}; // proxy is relaying a client's error
+// err = { message, family, address, port };
 ```
 
 <!--
@@ -163,44 +159,43 @@ handlers.onconnect = function (tun) { }                   // a new client has co
 
 -->
 
-Packer & Extras
-------
+## Packer & Extras
 
 Packs header metadata about connection into a buffer (potentially with original data), ready to send.
 
 ```js
-var headerAndBody = Packer.pack(tun, data);               // Add M-PROXY header to data
-                                                          // tun = { family, address, port
-                                                          //       , service, serviceport, name }
+var headerAndBody = Packer.pack(tun, data); // Add M-PROXY header to data
+// tun = { family, address, port
+//       , service, serviceport, name }
 
-var headerBuf = Packer.packHeader(tun, data);             // Same as above, but creates a buffer for header only
-                                                          // (data can be converted to a buffer or sent as-is)
+var headerBuf = Packer.packHeader(tun, data); // Same as above, but creates a buffer for header only
+// (data can be converted to a buffer or sent as-is)
 
-var addr = Packer.socketToAddr(socket);                   // Probe raw, raw socket for address info
+var addr = Packer.socketToAddr(socket); // Probe raw, raw socket for address info
 
-var id = Packer.addrToId(address);                        // Turn M-PROXY address info into a deterministic id
+var id = Packer.addrToId(address); // Turn M-PROXY address info into a deterministic id
 
-var id = Packer.socketToId(socket);                       // Turn raw, raw socket info into a deterministic id
+var id = Packer.socketToId(socket); // Turn raw, raw socket info into a deterministic id
 ```
 
 ## API Helpers
 
 ```js
-var socket = Packer.Stream.wrapSocket(socketOrStream);   // workaround for https://github.com/nodejs/node/issues/8854
-                                                         // which was just closed recently, but probably still needs
-                                                         // something more like this (below) to work as intended
-                                                         // https://github.com/findhit/proxywrap/blob/master/lib/proxywrap.js
+var socket = Packer.Stream.wrapSocket(socketOrStream); // workaround for https://github.com/nodejs/node/issues/8854
+// which was just closed recently, but probably still needs
+// something more like this (below) to work as intended
+// https://github.com/findhit/proxywrap/blob/master/lib/proxywrap.js
 ```
 
 ```js
 var myTransform = Packer.Transform.create({
-  address: {
-    family: '...'
-  , address: '...'
-  , port: '...'
-  }
-  // hint at the service to be used
-, service: 'https'
+	address: {
+		family: '...',
+		address: '...',
+		port: '...'
+	},
+	// hint at the service to be used
+	service: 'https'
 });
 ```
 
@@ -217,6 +212,7 @@ hexdump output.bin
 Where `input.json` looks something like this:
 
 `input.json`:
+
 ```
 { "version": 1
 , "address": {
@@ -231,12 +227,12 @@ Where `input.json` looks something like this:
 }
 ```
 
-Raw TCP SNI Packet
-------------------
+## Raw TCP SNI Packet
 
 and `sni.tcp.bin` is any captured tcp packet, such as this one with a tls hello:
 
 `sni.tcp.bin`:
+
 ```
          0  1  2  3  4  5  6  7  8  9  A  B  C  D  D  F
 0000000 16 03 01 00 c2 01 00 00 be 03 03 57 e3 76 50 66
@@ -255,8 +251,7 @@ and `sni.tcp.bin` is any captured tcp packet, such as this one with a tls hello:
 00000c7
 ```
 
-Tunneled TCP SNI Packet
------------------------
+## Tunneled TCP SNI Packet
 
 You should see that the result is simply all of the original packet with a leading header.
 

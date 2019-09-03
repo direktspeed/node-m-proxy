@@ -1,10 +1,11 @@
-{ "version": 1
-, "address": {
-    "family": "IPv4"
-  , "address": "127.0.1.1"
-  , "port": 4321
-  , "service": "https"
-  , "serviceport": 443
-  }
-, "filepath": "./sni.hello.bin"
+{
+	"version": 1,
+	"address": {
+		"family": "IPv4",
+		"address": "127.0.1.1",
+		"port": 4321,
+		"service": "https",
+		"serviceport": 443
+	},
+	"filepath": "./sni.hello.bin"
 }
