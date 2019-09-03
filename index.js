@@ -266,34 +266,34 @@ function extractSocketProps(socket, propNames) {
     propNames.forEach(function (propName) {
       props[propName] = socket['_' + propName];
     });
-  } else if (
-    socket._handle
-    && socket._handle._parent
-    && socket._handle._parent.owner
-    && socket._handle._parent.owner.stream
-    && socket._handle._parent.owner.stream.remotePort
-  ) {
-    propNames.forEach(function (propName) {
-      props[propName] = socket._handle._parent.owner.stream[propName];
-    });
-  } else if (
-    socket._handle._parentWrap
-    && socket._handle._parentWrap
-    && socket._handle._parentWrap.remotePort
-  ) {
-    propNames.forEach(function (propName) {
-      props[propName] = socket._handle._parentWrap[propName];
-    });
-  } else if (
-    socket._handle._parentWrap
-    && socket._handle._parentWrap._handle
-    && socket._handle._parentWrap._handle.owner
-    && socket._handle._parentWrap._handle.owner.stream
-    && socket._handle._parentWrap._handle.owner.stream.remotePort
-  ) {
-    propNames.forEach(function (propName) {
-      props[propName] = socket._handle._parentWrap._handle.owner.stream[propName];
-    });
+  } else if (socket._handle) {
+    if (
+      socket._handle._parent
+      && socket._handle._parent.owner
+      && socket._handle._parent.owner.stream
+      && socket._handle._parent.owner.stream.remotePort
+    ) {
+      propNames.forEach(function (propName) {
+        props[propName] = socket._handle._parent.owner.stream[propName];
+      });
+    } else if (
+      socket._handle._parentWrap
+      && socket._handle._parentWrap.remotePort
+    ) {
+      propNames.forEach(function (propName) {
+        props[propName] = socket._handle._parentWrap[propName];
+      });
+    } else if (
+      socket._handle._parentWrap
+      && socket._handle._parentWrap._handle
+      && socket._handle._parentWrap._handle.owner
+      && socket._handle._parentWrap._handle.owner.stream
+      && socket._handle._parentWrap._handle.owner.stream.remotePort
+    ) {
+      propNames.forEach(function (propName) {
+        props[propName] = socket._handle._parentWrap._handle.owner.stream[propName];
+      });
+    }
   }
   return props;
 }
