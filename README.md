@@ -1,6 +1,4 @@
-# proxy-packer
-
-| Sponsored by [ppl](https://ppl.family) |
+# proxy-packer | a [Root](https://rootprojects.org) project
 
 "The M-PROXY Protocol" for node.js
 
